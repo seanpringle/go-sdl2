@@ -28,7 +28,10 @@ static int RWclose(SDL_RWops *ctx)
 }
 */
 import "C"
-import "unsafe"
+import (
+	"unsafe"
+	"reflect"
+)
 
 /* RWops Types */
 const (
@@ -184,6 +187,29 @@ func (src *RWops) ReadBE64() uint64 {
 		return 0
 	}
 	return uint64(C.SDL_ReadBE64(src.cptr()))
+}
+
+// TODO
+func (src *RWops) LoadFile_RW(freesrc bool) (data []byte, size int) {
+	var _size C.size_t
+	var _freesrc C.int = 0
+
+	if freesrc {
+		_freesrc = 1
+	}
+
+	_data := C.SDL_LoadFile_RW(src.cptr(), &_size, _freesrc)
+	sliceHeader := (*reflect.SliceHeader)(unsafe.Pointer(&data))
+	sliceHeader.Cap = int(_size)
+	sliceHeader.Len = int(_size)
+	sliceHeader.Data = uintptr(_data)
+	size = int(_size)
+	return
+}
+
+// TODO
+func LoadFile(file string) (data []byte, size int) {
+	return RWFromFile(file, "rb").LoadFile_RW(true)
 }
 
 func (dst *RWops) WriteU8(value uint8) uint {

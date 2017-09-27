@@ -16,9 +16,23 @@ const (
 	HAT_LEFTDOWN  = C.SDL_HAT_LEFTDOWN
 )
 
+const (
+    JOYSTICK_TYPE_UNKNOWN JoystickType = 0
+    JOYSTICK_TYPE_GAMECONTROLLER
+    JOYSTICK_TYPE_WHEEL
+    JOYSTICK_TYPE_ARCADE_STICK
+    JOYSTICK_TYPE_FLIGHT_STICK
+    JOYSTICK_TYPE_DANCE_PAD
+    JOYSTICK_TYPE_GUITAR
+    JOYSTICK_TYPE_DRUM_KIT
+    JOYSTICK_TYPE_ARCADE_PAD
+    JOYSTICK_TYPE_THROTTLE
+)
+
 type Joystick C.SDL_Joystick
 type JoystickGUID C.SDL_JoystickGUID
 type JoystickID C.SDL_JoystickID
+type JoystickType C.SDL_JoystickType
 
 func (joy *Joystick) cptr() *C.SDL_Joystick {
 	return (*C.SDL_Joystick)(unsafe.Pointer(joy))
@@ -48,9 +62,49 @@ func (joy *Joystick) Name() string {
 	return (C.GoString)(C.SDL_JoystickName(joy.cptr()))
 }
 
+// TODO
+func (joy *Joystick) Vendor() uint16 {
+	return 0
+}
+
+// TODO
+func (joy *Joystick) Product() uint16 {
+	return 0
+}
+
+// TODO
+func (joy *Joystick) ProductVersion() uint16 {
+	return 0
+}
+
+// TODO
+func (joy *Joystick) Type() JoystickType {
+	return 0
+}
+
 // JoystickGetDeviceGUID (https://wiki.libsdl.org/SDL_JoystickGetDeviceGUID)
 func JoystickGetDeviceGUID(index int) JoystickGUID {
 	return (JoystickGUID)(C.SDL_JoystickGetDeviceGUID(C.int(index)))
+}
+
+// TODO
+func JoystickGetDeviceVendor(index int) uint16 {
+	return (uint16)(C.SDL_JoystickGetDeviceVendor(C.int(index)))
+}
+
+// TODO
+func JoystickGetDeviceProduct(index int) uint16 {
+	return (uint16)(C.SDL_JoystickGetDeviceProduct(C.int(index)))
+}
+
+// TODO
+func JoystickGetDeviceProductVersion(index int) uint16 {
+	return (uint16)(C.SDL_JoystickGetDeviceProductVersion(C.int(index)))
+}
+
+// TODO
+func JoystickGetDeviceType(index int) JoystickType {
+	return (JoystickType)(C.SDL_JoystickGetDeviceType(C.int(index)))
 }
 
 // Joystick (https://wiki.libsdl.org/SDL_JoystickGetGUID)
@@ -117,6 +171,12 @@ func JoystickEventState(state int) int {
 // JoystickGetAxis (https://wiki.libsdl.org/SDL_JoystickGetAxis)
 func (joy *Joystick) GetAxis(axis int) int16 {
 	return (int16)(C.SDL_JoystickGetAxis(joy.cptr(), C.int(axis)))
+}
+
+// TODO
+func (joy *Joystick) GetAxisInitialState(axis int) (initialState int16, hasInitialValue bool) {
+	hasInitialValue = C.SDL_JoystickGetAxisInitialState(joy.cptr(), C.int(axis), (*C.Sint16)(&initialState)) == C.SDL_TRUE
+	return
 }
 
 // JoystickGetHat (https://wiki.libsdl.org/SDL_JoystickGetHat)

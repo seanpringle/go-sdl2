@@ -335,3 +335,15 @@ func (surface *Surface) Pixels() []byte {
 func (surface *Surface) Data() unsafe.Pointer {
 	return surface.pixels
 }
+
+// TODO
+func (surface *Surface) Duplicate() (newSurface *Surface, err error) {
+	_newSurface := C.SDL_DuplicateSurface(surface.cptr())
+	if _newSurface == nil {
+		err = GetError()
+		return
+	}
+
+	newSurface = (*Surface)(unsafe.Pointer(_newSurface))
+	return
+}
