@@ -32,6 +32,12 @@ var callInMain = func(f func()) {
 	panic("sdl.Main(main func()) must be called before sdl.Do(f func())")
 }
 
+// Calls a function in the main thread. It is only properly initialized inside
+// sdl.Main(..). As a default, it panics. It is used by sdl.DoAsync(..) below.
+var callInMainAsync = func(f func()) {
+	panic("sdl.Main(main func()) must be called before sdl.Do(f func())")
+}
+
 func init() {
 	// Make sure the main goroutine is bound to the main thread.
 	runtime.LockOSThread()
@@ -64,7 +70,7 @@ func init() {
 // 	}
 func Main(main func()) {
 	// Queue of functions that are thread-sensitive
-	callQueue := make(chan func())
+	callQueue := make(chan func(), 32)
 
 	// Properly initialize callInMain for use by sdl.Do(..)
 	callInMain = func(f func()) {
@@ -74,6 +80,10 @@ func Main(main func()) {
 			done <- true
 		}
 		<-done
+	}
+
+	callInMainAsync = func(f func()) {
+		callQueue <- f
 	}
 
 	go func() {
@@ -93,6 +103,13 @@ func Main(main func()) {
 // a panic.
 func Do(f func()) {
 	callInMain(f)
+}
+
+// sdl.Do(..) without waiting for call completion.
+// Uses the same queue as sdl.Do(..), so it's easy to queue up a bunch of async
+// SDL calls then wait for them once en-masse with a final sdl.Do(..)
+func DoAsync(f func()) {
+	callInMainAsync(f)
 }
 
 // Init (https://wiki.libsdl.org/SDL_Init)
