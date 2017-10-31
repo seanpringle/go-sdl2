@@ -16,6 +16,13 @@ static void SDL_GL_GetDrawableSize(SDL_Window *window, int *w, int *h)
 	*h = 0;
 }
 #endif
+
+#if !(SDL_VERSION_ATLEAST(2,0,5))
+#pragma message("SDL_SetWindowResizable is not supported before SDL 2.0.5")
+static void SDL_SetWindowResizable(SDL_Window *window, SDL_bool resizable)
+{
+}
+#endif
 */
 import "C"
 import "unsafe"
@@ -409,6 +416,15 @@ func (window *Window) GetPosition() (x, y int) {
 	var _x, _y C.int
 	C.SDL_GetWindowPosition(window.cptr(), &_x, &_y)
 	return int(_x), int(_y)
+}
+
+// Window (https://wiki.libsdl.org/SDL_SetWindowResizable)
+func (window *Window) SetResizable(resizable bool) {
+    var _resizable C.SDL_bool = C.SDL_FALSE
+    if resizable {
+        _resizable = C.SDL_TRUE
+    }
+    C.SDL_SetWindowResizable(window.cptr(), _resizable)
 }
 
 // Window (https://wiki.libsdl.org/SDL_SetWindowSize)
