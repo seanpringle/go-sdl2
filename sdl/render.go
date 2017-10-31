@@ -3,10 +3,14 @@ package sdl
 /*
 #include "sdl_wrapper.h"
 
-int SDL_RenderCopyBatch(SDL_Renderer *renderer, int count, SDL_Texture **textures, SDL_Rect **srcrects, SDL_Rect **dstrects) {
+int SDL_RenderCopyBatch(SDL_Renderer *renderer, int count, void *array) {
 	int i;
-	for (i = 0; i < count; i++) {
-		SDL_RenderCopy(renderer, textures[i], srcrects[i], dstrects[i]);
+	for (i = 0; i < count*3; i+=3) {
+		SDL_RenderCopy(renderer,
+			*(SDL_Texture**)(array+(i)*sizeof(void*)),
+			*(SDL_Rect**)(array+(i+1)*sizeof(void*)),
+			*(SDL_Rect**)(array+(i+2)*sizeof(void*))
+		);
 	}
 	return 0;
 }
@@ -516,33 +520,35 @@ func (renderer *Renderer) FillRects(rects []Rect) error {
 // Renderer CopyBatch
 func (renderer *Renderer) CopyBatch(textures []*Texture, sr []*Rect, dr []*Rect) error {
 
-	size := int(unsafe.Sizeof(textures[0]))
-	ctextures := C.malloc(C.size_t(size*len(textures)))
-	csr := C.malloc(C.size_t(size*len(textures)))
-	cdr := C.malloc(C.size_t(size*len(textures)))
+	items := len(textures)
 
-	for i := 0; i < len(textures); i++ {
-		ptr := unsafe.Pointer(uintptr(ctextures) + uintptr(size * i))
+	if items == 0 {
+		return nil
+	}
+
+	size := int(unsafe.Sizeof(textures[0].cptr()))
+	array := C.malloc(C.size_t(size*items*3))
+
+	ptr := array
+
+	for i := 0; i < items; i++ {
 		*(**C.SDL_Texture)(ptr) = textures[i].cptr()
+		ptr = unsafe.Pointer(uintptr(ptr) + uintptr(size))
 
-		ptr = unsafe.Pointer(uintptr(csr) + uintptr(size * i))
 		*(**C.SDL_Rect)(ptr) = sr[i].cptr()
+		ptr = unsafe.Pointer(uintptr(ptr) + uintptr(size))
 
-		ptr = unsafe.Pointer(uintptr(cdr) + uintptr(size * i))
 		*(**C.SDL_Rect)(ptr) = dr[i].cptr()
+		ptr = unsafe.Pointer(uintptr(ptr) + uintptr(size))
 	}
 
 	C.SDL_RenderCopyBatch(
 		renderer.cptr(),
-		C.int(len(textures)),
-		ctextures,
-		csr,
-		cdr,
+		C.int(items),
+		array,
 	)
 
-	C.free(ctextures)
-	C.free(csr)
-	C.free(cdr)
+	C.free(array)
 	return nil
 }
 
