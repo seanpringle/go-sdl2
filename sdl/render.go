@@ -5,11 +5,14 @@ package sdl
 
 int SDL_RenderCopyBatch(SDL_Renderer *renderer, int count, void *array) {
 	int i;
-	for (i = 0; i < count*3; i+=3) {
-		SDL_RenderCopy(renderer,
+	for (i = 0; i < count*4; i+=4) {
+		SDL_RenderCopyEx(renderer,
 			*(SDL_Texture**)(array+(i)*sizeof(void*)),
 			*(SDL_Rect**)(array+(i+1)*sizeof(void*)),
-			*(SDL_Rect**)(array+(i+2)*sizeof(void*))
+			*(SDL_Rect**)(array+(i+2)*sizeof(void*)),
+			*(double*)(array+(i+3)*sizeof(void*)),
+			NULL,
+			SDL_FLIP_NONE
 		);
 	}
 	return 0;
@@ -518,7 +521,7 @@ func (renderer *Renderer) FillRects(rects []Rect) error {
 }
 
 // Renderer CopyBatch
-func (renderer *Renderer) CopyBatch(textures []*Texture, sr []*Rect, dr []*Rect) error {
+func (renderer *Renderer) CopyBatch(textures []*Texture, sr []*Rect, dr []*Rect, angles []float64) error {
 
 	items := len(textures)
 
@@ -527,7 +530,7 @@ func (renderer *Renderer) CopyBatch(textures []*Texture, sr []*Rect, dr []*Rect)
 	}
 
 	size := int(unsafe.Sizeof(textures[0].cptr()))
-	array := C.malloc(C.size_t(size*items*3))
+	array := C.malloc(C.size_t(size * items * 4))
 
 	ptr := array
 
@@ -539,6 +542,10 @@ func (renderer *Renderer) CopyBatch(textures []*Texture, sr []*Rect, dr []*Rect)
 		ptr = unsafe.Pointer(uintptr(ptr) + uintptr(size))
 
 		*(**C.SDL_Rect)(ptr) = dr[i].cptr()
+		ptr = unsafe.Pointer(uintptr(ptr) + uintptr(size))
+
+		*(*C.double)(ptr) = C.double(angles[i])
+		// assumes sizeof(double) == sizeof(void*)
 		ptr = unsafe.Pointer(uintptr(ptr) + uintptr(size))
 	}
 
