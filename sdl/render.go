@@ -5,15 +5,24 @@ package sdl
 
 int SDL_RenderCopyBatch(SDL_Renderer *renderer, int count, void *array) {
 	int i;
-	for (i = 0; i < count*4; i+=4) {
-		SDL_RenderCopyEx(renderer,
-			*(SDL_Texture**)(array+(i)*sizeof(void*)),
-			*(SDL_Rect**)(array+(i+1)*sizeof(void*)),
-			*(SDL_Rect**)(array+(i+2)*sizeof(void*)),
-			*(double*)(array+(i+3)*sizeof(void*)),
-			NULL,
-			SDL_FLIP_NONE
-		);
+	SDL_Texture **t;
+	SDL_Rect *sr, *dr;
+	double *a;
+	void *slot;
+	for (i = 0; i < count; i++) {
+
+		slot = array + i * (sizeof(SDL_Texture*) + sizeof(SDL_Rect) + sizeof(SDL_Rect) + sizeof(double));
+
+		t = slot;
+		sr = slot + sizeof(SDL_Texture*);
+		dr = slot + sizeof(SDL_Texture*) + sizeof(SDL_Rect);
+		a = slot + sizeof(SDL_Texture*) + sizeof(SDL_Rect) + sizeof(SDL_Rect);
+
+		if (sr->x == 0 && sr->y == 0 && sr->w == 0 && sr->h == 0) {
+			sr = NULL;
+		}
+
+		SDL_RenderCopyEx(renderer, *t, sr, dr, *a, NULL, SDL_FLIP_NONE);
 	}
 	return 0;
 }
@@ -529,24 +538,60 @@ func (renderer *Renderer) CopyBatch(textures []*Texture, sr []*Rect, dr []*Rect,
 		return nil
 	}
 
-	size := int(unsafe.Sizeof(textures[0].cptr()))
-	array := C.malloc(C.size_t(size * items * 4))
+	sizePtr := int(unsafe.Sizeof(unsafe.Pointer(uintptr(0))))
+	sizeInt := int(C.sizeof_int)
+	sizeDbl := int(C.sizeof_double)
+
+	array := C.malloc(C.size_t((sizePtr + sizeInt*8 + sizeDbl) * items))
 
 	ptr := array
 
+	inc := func(n int) {
+		ptr = unsafe.Pointer(uintptr(ptr) + uintptr(n))
+	}
+
 	for i := 0; i < items; i++ {
+
 		*(**C.SDL_Texture)(ptr) = textures[i].cptr()
-		ptr = unsafe.Pointer(uintptr(ptr) + uintptr(size))
+		inc(sizePtr)
 
-		*(**C.SDL_Rect)(ptr) = sr[i].cptr()
-		ptr = unsafe.Pointer(uintptr(ptr) + uintptr(size))
+		srX := C.int(0)
+		srY := C.int(0)
+		srW := C.int(0)
+		srH := C.int(0)
+		if sr[i] != nil {
+			srX = C.int(sr[i].X)
+			srY = C.int(sr[i].Y)
+			srW = C.int(sr[i].W)
+			srH = C.int(sr[i].H)
+		}
 
-		*(**C.SDL_Rect)(ptr) = dr[i].cptr()
-		ptr = unsafe.Pointer(uintptr(ptr) + uintptr(size))
+		*(*C.int)(ptr) = srX
+		inc(sizeInt)
+
+		*(*C.int)(ptr) = srY
+		inc(sizeInt)
+
+		*(*C.int)(ptr) = srW
+		inc(sizeInt)
+
+		*(*C.int)(ptr) = srH
+		inc(sizeInt)
+
+		*(*C.int)(ptr) = C.int(dr[i].X)
+		inc(sizeInt)
+
+		*(*C.int)(ptr) = C.int(dr[i].Y)
+		inc(sizeInt)
+
+		*(*C.int)(ptr) = C.int(dr[i].W)
+		inc(sizeInt)
+
+		*(*C.int)(ptr) = C.int(dr[i].H)
+		inc(sizeInt)
 
 		*(*C.double)(ptr) = C.double(angles[i])
-		// assumes sizeof(double) == sizeof(void*)
-		ptr = unsafe.Pointer(uintptr(ptr) + uintptr(size))
+		inc(sizeDbl)
 	}
 
 	C.SDL_RenderCopyBatch(
